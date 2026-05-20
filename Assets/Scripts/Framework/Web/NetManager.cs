@@ -1,3 +1,4 @@
+using Proto;
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
@@ -29,14 +30,37 @@ namespace Framework.Web
         // 事件
         private static Dictionary<NetEvent, NetEventListener> netListeners;
         private static Dictionary<string, MsgEventListener> msgListeners;
+
+        private static float lastPingTime;
+        private static float lastPongTime;
+        private static int pingInterval;
+
+        // 初始化
         static NetManager()
         {
             netListeners = new Dictionary<NetEvent, NetEventListener>();
             msgListeners = new Dictionary<string, MsgEventListener>();
             MAX_MSG_HANDLER_COUNT = 10;
+            pingInterval = 5;
+            AddMsgListener("MsgPong", OnMsgPong);
         }
 
-        // 公开方法
+        private static void InitState()
+        {
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _socket.NoDelay = true;
+            isConnecting = false;
+            isClosing = false;
+
+            sendQueue = new Queue<ByteArray>();
+            readBuff = new ByteArray(1024);
+            msgQueue = new Queue<MsgBase>();
+
+            lastPingTime = Time.time;
+            lastPongTime = Time.time;
+        }
+
+        // 对外接口
         public static void Connect(string ip, int port)
         {
             if(isConnecting)
@@ -50,29 +74,24 @@ namespace Framework.Web
                 return;
             }
 
+            Debug.Log("[Connect] 开始连接...");
             InitState();
-            _socket.BeginConnect(ip, port, ConnectCallBack, _socket);
             isConnecting = true;
+            _socket.BeginConnect(ip, port, ConnectCallBack, _socket);
         }
         public static void Close()
         {
-            if(isClosing)    
-            {
-                return;
-            }
-            if(_socket == null || !_socket.Connected)
-            {
-                return;
-            }
+            if(isClosing) return;
+            if (_socket == null || !_socket.Connected) return;
 
-            if(sendQueue.Count == 0)
-            { 
-                _socket.Close();
-                FireNetEvent(NetEvent.Close, "");
+            if(sendQueue.Count > 0)
+            {
+                isClosing = true;
             }
             else
             {
-                isClosing = true;
+                _socket.Close();
+                FireNetEvent(NetEvent.Close, "");
             }
         }
         public static void Send(MsgBase msgBase)
@@ -83,17 +102,25 @@ namespace Framework.Web
 
             byte[] bytes = MsgBase.Encode(msgBase);
             ByteArray byteArray = new ByteArray(bytes);
-            sendQueue.Enqueue(byteArray);
 
-            if(sendQueue.Count == 1)
+            int count = 0;
+            lock(sendQueue)
             {
-                _socket.BeginSend(byteArray.bytes, byteArray.readIdx, byteArray.Size, 0, SendCallBack, _socket);
+                sendQueue.Enqueue(byteArray);
+                count = sendQueue.Count;
+            }
+
+            if(count == 1)
+            {
+                _socket.BeginSend(byteArray.bytes, byteArray.readIdx, byteArray.Remain, 0, SendCallBack, _socket);
             }
 
         }
         public static void Update()
         {
+            if (_socket == null || !_socket.Connected) return;
             MsgUpdate();
+            //PingUpdate();
         }
 
         public static void AddNetListener(NetEvent netEvent, NetEventListener listener)
@@ -122,9 +149,11 @@ namespace Framework.Web
         public static void FireNetEvent(NetEvent netEvent, string msg)
         {
             if (!netListeners.ContainsKey(netEvent)) return;
+            if (netListeners[netEvent] == null) return;
 
-            netListeners[netEvent].Invoke(msg);
+            netListeners[netEvent](msg);
         }
+       
         public static void AddMsgListener(string name, MsgEventListener listener)
         {
             if (msgListeners.ContainsKey(name))
@@ -151,9 +180,11 @@ namespace Framework.Web
         public static void FireMsgEvent(string name, MsgBase msgBase)
         {
             if (!msgListeners.ContainsKey(name)) return;
+            if (msgListeners[name] == null) return;
 
-            msgListeners[name].Invoke(msgBase);
+            msgListeners[name](msgBase);
         }
+        
         // 私有
         private static void ConnectCallBack(IAsyncResult ar)
         {
@@ -169,8 +200,8 @@ namespace Framework.Web
             }
             catch(SocketException ex)
             {
-                FireNetEvent(NetEvent.ConnectFail, ex.ToString());
                 isConnecting = false;
+                FireNetEvent(NetEvent.ConnectFail, ex.ToString());
             }
         }
         private static void SendCallBack(IAsyncResult ar)
@@ -179,30 +210,26 @@ namespace Framework.Web
             {
                 Socket socket = (Socket)ar.AsyncState;
                 int count = socket.EndSend(ar);
-                ByteArray byteArray = sendQueue.Peek();
-                byteArray.readIdx += count;
 
-                if(byteArray.Size <= 0)
-                { 
-                    sendQueue.Dequeue();
-                    if (sendQueue.Count == 0)
+                ByteArray ba;
+                lock(sendQueue)
+                {
+                    ba = sendQueue.Peek();
+                }
+                ba.readIdx += count;
+
+                if(ba.Length <= 0)
+                {
+                    lock(sendQueue)
                     {
-                        //if(isClosing) 
-                        //{
-                        //    socket.Close();
-                        //    FireNetEvent(NetEvent.Close, "");
-                        //}
-                        //return;
-                        byteArray = null;
-                    }
-                    else 
-                    {
-                        byteArray = sendQueue.Peek(); 
+                        sendQueue.Dequeue();
+                        ba = sendQueue.Count > 0 ? sendQueue.Peek() : null;
                     }
                 }
-                if(byteArray != null)
+
+                if(ba != null)
                 {
-                    socket.BeginSend(byteArray.bytes, byteArray.readIdx, byteArray.Size, 0, SendCallBack, _socket);
+                    socket.BeginSend(ba.bytes, ba.readIdx, ba.Length, 0, SendCallBack, socket);
                 }
                 else if(isClosing)
                 {
@@ -221,6 +248,7 @@ namespace Framework.Web
             {
                 Socket socket = (Socket)ar.AsyncState;
                 int count = socket.EndReceive(ar);
+                
                 if(count == 0)
                 {
                     Close();
@@ -230,14 +258,13 @@ namespace Framework.Web
                 readBuff.writeIdx += count;
                 OnReceiveData();
 
-                if(readBuff.Remain < count)
-                {
-                    readBuff.Expand(readBuff.Size + count);
-                }
-                else if(readBuff.capacity-readBuff.writeIdx < count)
+                //?
+                if(readBuff.Remain < 8)
                 {
                     readBuff.MoveBytes();
+                    readBuff.CheckAndExpand(readBuff.Length * 2);
                 }
+                
                 socket.BeginReceive(readBuff.bytes, readBuff.readIdx, readBuff.Remain, 0, ReceiveCallBack, socket);
             }
             catch(SocketException ex)
@@ -245,51 +272,71 @@ namespace Framework.Web
                 Debug.Log("[Receive] fail: " + ex.ToString());
             }
         }
-
-        private static void InitState()
-        {
-            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            _socket.NoDelay = true;
-            isConnecting = false;
-            isClosing = false;
-            sendQueue = new Queue<ByteArray>();
-            readBuff = new ByteArray(1024);
-            msgQueue = new Queue<MsgBase>();
-
-        }
         private static void OnReceiveData()
         {
-            if(readBuff.Size <= 2)
-            {
-                return;
-            }
+            if (readBuff.Length <= 2) return;
 
-            byte[] bytes = readBuff.bytes;
-            Int16 len = (Int16)(bytes[readBuff.readIdx+1] << 8 | bytes[readBuff.readIdx]);
-            if(len > bytes.Length)
-            {
-                return;
-            }
+            Int16 bodylen = (Int16)(readBuff.bytes[readBuff.readIdx+1] << 8 | readBuff.bytes[readBuff.readIdx]);
+            if (bodylen > readBuff.bytes.Length) return;
+            readBuff.readIdx += 2;
 
             string protoName;
-            MsgBase msgBase = MsgBase.Decode(readBuff.bytes, readBuff.readIdx + 2, len, out protoName);
+            MsgBase msg = MsgBase.Decode(readBuff.bytes, readBuff.readIdx, bodylen, out protoName);
+            readBuff.readIdx += bodylen;
 
-            readBuff.readIdx += (len + 2);
-
-            msgQueue.Enqueue(msgBase);
-
+            if(msg != null)
+            {
+                lock(msgQueue)
+                {
+                    msgQueue.Enqueue(msg);
+                }
+            }
+            
             OnReceiveData();
         }
+
+        // 每帧更新
         private static void MsgUpdate()
         {
             for(int i=0; i<MAX_MSG_HANDLER_COUNT; ++i)
             {
-                if (msgQueue.Count == 0) return;
-
-                MsgBase msgBase = msgQueue.Dequeue();
-                FireMsgEvent(msgBase.ProtoName, msgBase);
+                MsgBase msg = null;
+                lock(msgQueue)
+                {
+                    if(msgQueue.Count > 0)
+                    {
+                        msg = msgQueue.Dequeue();
+                    }
+                }
+                if(msg != null)
+                {
+                    FireMsgEvent(msg.ProtoName, msg);
+                }
             }
         }
-        
+        private static void PingUpdate()
+        {
+            if (_socket == null || !_socket.Connected) return;
+
+            if(Time.time > lastPongTime + pingInterval*4)
+            {
+                Close();
+                return;
+            }
+
+            if(Time.time > lastPingTime + pingInterval)
+            {
+                MsgPing pingMsg = new MsgPing();
+                Send(pingMsg);
+
+                lastPingTime = Time.time;
+            }
+        }
+
+        //MsgEvent
+        private static void OnMsgPong(MsgBase msgBase)
+        {
+            lastPongTime = Time.time;
+        }
     }
 }

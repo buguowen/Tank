@@ -66,13 +66,14 @@ namespace Module.Login
             if(msg.result != 0)
             {
                 PanelManager.Open<TipPanel>("[Login] fail");
+                return;
             }
 
             Debug.Log("[Login] success");
             GameMain.id = msg.id;
             GameObject tank = new GameObject("tank");
             CtrlTank ctrlTank = tank.AddComponent<CtrlTank>();
-            ctrlTank.Init("Low Poly German Tanks/Pz-VI-Tiger/Pz-VI Tiger");
+            ctrlTank.Init("Tanks/Pz-VI Tiger");
             tank.AddComponent<CameraFollow>();
             Close();
         }

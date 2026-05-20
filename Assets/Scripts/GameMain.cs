@@ -19,12 +19,15 @@ namespace Game
         }
         private void Start()
         {
+            NetManager.Connect("127.0.0.1", 8888);
             PanelManager.Init();
             PanelManager.Open<LoginPanel>();
         }
         private void OnEnable()
         {
+            NetManager.AddNetListener(NetEvent.ConnectSuccess, OnConnectSuccess);
             NetManager.AddNetListener(NetEvent.Close, OnClose);
+
             NetManager.AddMsgListener("MsgKick", OnMsgKick);
         }
         private void Update()
@@ -33,17 +36,27 @@ namespace Game
         }
         private void OnDisable()
         {
+            NetManager.RemoveNetListener(NetEvent.ConnectSuccess, OnConnectSuccess);
             NetManager.RemoveNetListener(NetEvent.Close, OnClose);
+
             NetManager.RemoveMsgListener("MsgKick", OnMsgKick);
         }
 
+        //MsgEvent
         private void OnMsgKick(MsgBase msgBase)
         {
             PanelManager.Open<TipPanel>("Kicked.");
         }
+
+
+        // NetEvent
+        private void OnConnectSuccess(string msg)
+        {
+            Debug.Log("[Connect]连接成功");
+        }
         private void OnClose(string msg)
         {
-            
+            PanelManager.Open<TipPanel>("[Close]" + msg);
         }
     }
 }

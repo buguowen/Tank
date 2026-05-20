@@ -5,7 +5,15 @@ namespace Framework.Web
 {
     public class ByteArray 
     {
-        public ByteArray(int capacity)
+        public byte[] bytes;
+        public int readIdx;
+        public int writeIdx;
+        public int capacity;
+
+        public int Length => writeIdx - readIdx;    // 进度条的长度
+        public int Remain => capacity - writeIdx;   // 还差多少到末尾
+
+        public ByteArray(int capacity = 1024)
         {
             bytes = new byte[capacity];
             readIdx = 0;
@@ -21,56 +29,45 @@ namespace Framework.Web
             capacity = bytes.Length;
         }
 
-        public byte[] bytes;
-        public int readIdx;
-        public int writeIdx;
-        public int capacity;
-
-        public int Size => writeIdx-readIdx;
-        public int Remain => capacity-Size;
-
-        /*public void Write(byte[] bs, int offset, int len)
+        public void CheckAndExpand(int count)
         {
-            if(Remain < len)
-            {
-                Expand(capacity + len);
-            }
-            if(capacity-writeIdx < len)
+            if(Remain < count)
             {
                 MoveBytes();
             }
-            Array.Copy(bs, offset, bytes, writeIdx, len);
-            writeIdx = writeIdx + len;
-        }*/
-        /*public byte[] Read(int len)
-        {
-            byte[] bs = new byte[len];
-            Array.Copy(bytes, readIdx, bs, 0, len);
-            readIdx = readIdx + len;
-            return bs;
-        }*/        
+            if(Remain < count)
+            {
+                Expand(count);
+            }
+        }
         public void MoveBytes()
         {
-            Array.Copy(bytes, readIdx, bytes, 0, Size);
+            if (Length <= 0 || readIdx <= 0) return;
+
+            Array.Copy(bytes, readIdx, bytes, 0, Length);
             readIdx = 0;
-            writeIdx = readIdx + Size;
+            writeIdx = Length;
         }
         public void Expand(int len)
         {
-            while(capacity<len)
+            int newCapacity = capacity;
+            while(newCapacity - writeIdx< len)
             {
-                capacity = capacity * 2;
+                newCapacity *= 2;
             }
-            byte[] newBs = new byte[capacity];
-            Array.Copy(bytes, readIdx, newBs, 0, Size);
+
+            byte[] newBs = new byte[newCapacity];
+            Array.Copy(bytes, readIdx, newBs, 0, Length);
+
             bytes = newBs;
+            capacity = newCapacity;
+            writeIdx = Length;
             readIdx = 0;
-            writeIdx = readIdx + Size;
         }
         
         public void PrintStr()
         {
-            string str = System.Text.Encoding.UTF8.GetString(bytes, readIdx, Size);
+            string str = System.Text.Encoding.UTF8.GetString(bytes, readIdx, Length);
             Debug.Log(str);
         }
         public void PrintBytes()
