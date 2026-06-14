@@ -2,6 +2,7 @@ using Framework.UI;
 using Framework.Web;
 using Module;
 using Module.Login;
+using Proto;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -45,7 +46,15 @@ namespace Game
         //MsgEvent
         private void OnMsgKick(MsgBase msgBase)
         {
-            PanelManager.Open<TipPanel>("Kicked.");
+            MsgKick msg = (MsgKick)msgBase;
+            if (msg.reason == 1)
+            {
+                PanelManager.Open<TipPanel>("[Kick] Shared Account.");
+            }
+            else
+            {
+                PanelManager.Open<TipPanel>("[Kick] No Reason.");
+            }
         }
 
 

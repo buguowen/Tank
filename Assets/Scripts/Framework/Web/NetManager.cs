@@ -182,6 +182,7 @@ namespace Framework.Web
             if (!msgListeners.ContainsKey(name)) return;
             if (msgListeners[name] == null) return;
 
+            Console.WriteLine("[FireMsgEvent] " + name);
             msgListeners[name](msgBase);
         }
         
@@ -288,6 +289,7 @@ namespace Framework.Web
             {
                 lock(msgQueue)
                 {
+                    Console.WriteLine($"msgQueue.Enqueue: [ProtoName] {msg.ProtoName}");
                     msgQueue.Enqueue(msg);
                 }
             }
@@ -310,6 +312,7 @@ namespace Framework.Web
                 }
                 if(msg != null)
                 {
+                    Console.WriteLine($"msgQueue.Dequeue: [ProtoName] {msg.ProtoName}");
                     FireMsgEvent(msg.ProtoName, msg);
                 }
             }

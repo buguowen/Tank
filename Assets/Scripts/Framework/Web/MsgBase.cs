@@ -46,6 +46,7 @@ namespace Framework.Web
             Type type = Type.GetType("Proto." + protoName);   // 补全命名空间, 防止反射失败
             if (type == null) return null;
 
+            Debug.Log($"Decode: [ProtoName] {protoName} | [Content] {json}");
             return (MsgBase)JsonUtility.FromJson(json, type);
         }
 
