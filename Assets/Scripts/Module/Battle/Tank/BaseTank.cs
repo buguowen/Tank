@@ -24,8 +24,11 @@ namespace Tank
         protected float lastFireTime = 0f;
 
         // HP
-        protected int hp = 100;
+        public int hp = 100;
         protected bool isDied = false;
+
+        public string id = "";
+        public int camp = 0;
 
         protected void Start()
         {

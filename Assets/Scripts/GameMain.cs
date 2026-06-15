@@ -1,3 +1,4 @@
+using Battle;
 using Framework.UI;
 using Framework.Web;
 using Module;
@@ -21,7 +22,10 @@ namespace Game
         private void Start()
         {
             NetManager.Connect("127.0.0.1", 8888);
+
             PanelManager.Init();
+            BattleManager.Init();
+
             PanelManager.Open<LoginPanel>();
         }
         private void OnEnable()
