@@ -1808,6 +1808,7 @@ GameObject:
   - component: {fileID: 4563973297201526048}
   - component: {fileID: 2406514706396913912}
   - component: {fileID: 6088870754113522989}
+  - component: {fileID: 5355595168737866638}
   m_Layer: 0
   m_Name: Tank_Blue
   m_TagString: Untagged
@@ -1883,6 +1884,27 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &5355595168737866638
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8304314117635138814}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 3.8303895, y: 1.4700899, z: 6.2855053}
+  m_Center: {x: 0, y: 1.1547377, z: -0.15073311}
 --- !u!1 &8385603071231279907
 GameObject:
   m_ObjectHideFlags: 0

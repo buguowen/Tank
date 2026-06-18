@@ -9,7 +9,7 @@ namespace Tank
         public Camera followCamera;
         public Vector3 distance;
         public float offset;
-        public float speed = 5f;
+        public float speed = 10f;
 
         public Vector3 startPos;
         private void Start()

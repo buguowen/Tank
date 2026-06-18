@@ -11,7 +11,7 @@ namespace Tank
 
         // Speed
         protected float steer = 50f;
-        protected float speed = 5f;
+        protected float speed = 10f;
 
         // Turret
         protected float turretSpeed = 30f;

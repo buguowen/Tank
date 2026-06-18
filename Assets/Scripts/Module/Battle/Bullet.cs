@@ -1,4 +1,8 @@
 using Framework;
+using Framework.Web;
+using Game;
+using Proto;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
@@ -12,7 +16,7 @@ namespace Tank
         private GameObject skinGO;
         private Rigidbody bulletRB;
 
-        public float speed = 5f;
+        public float speed = 50f;
 
         public void Init(string skinPath)
         {
@@ -32,11 +36,28 @@ namespace Tank
         {
             BaseTank hitTank = hit.gameObject.GetComponent<BaseTank>();
             if (hitTank == null || hitTank == tank) return;
-            hitTank.Attacked(50);
-            //GameObject explosionPrefab = ResManager.LoadPrefab("explosion");
-            //Instantiate(explosionPrefab);
+
+            SendMsgHit(tank, hitTank);
+            //hitTank.Attacked(50);
+
+            GameObject explosionPrefab = ResManager.LoadPrefab("explosion");
+            Instantiate(explosionPrefab, hit.transform.position + Vector3.up*5, Quaternion.identity);
             Debug.Log("Explosion!");
             Destroy(gameObject);
+        }
+
+        private void SendMsgHit(BaseTank tank, BaseTank hitTank)
+        {
+            if (tank == null || hitTank == null) return;
+            if (tank.id != GameMain.id) return;
+
+            MsgHit msg = new MsgHit();
+            msg.targetId = hitTank.id;
+            msg.id = tank.id;
+            msg.x = transform.position.x;
+            msg.y = transform.position.y;
+            msg.z = transform.position.z;
+            NetManager.Send(msg);
         }
     }
 }

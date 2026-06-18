@@ -7,17 +7,17 @@ namespace Framework.Web
 {
     public class MsgBase 
     {
-        [SerializeField] protected string protoName;
+        public string protoName;
         public string ProtoName => protoName;
 
-        // Ğ­Òé¸ñÊ½
-        // Ğ­Òé×Ü³¤¶È(2B) | Ğ­ÒéÃû³¤¶È(2B) + Ğ­ÒéÃû | Ğ­ÒéÄÚÈİ
+        // åè®®æ ¼å¼
+        // åè®®æ€»é•¿åº¦(2B) | åè®®åé•¿åº¦(2B) + åè®®å | åè®®å†…å®¹
         public static byte[] Encode(MsgBase msgBase)
         {
             byte[] nameBytes = System.Text.Encoding.UTF8.GetBytes(msgBase.protoName);
             Int16 nameLen = (Int16)nameBytes.Length;
 
-            string json = JsonUtility.ToJson(msgBase);
+            string json = JsonConvert.SerializeObject(msgBase);
             byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(json);
 
             Int16 totalLen = (Int16)(2 + nameLen + bodyBytes.Length);
@@ -36,18 +36,29 @@ namespace Framework.Web
 
         public static MsgBase Decode(byte[] bytes, int offset, int count, out string protoName)
         {
-            Int16 nameLen = (Int16)(bytes[offset] | (bytes[offset+1] << 8));
-            protoName = System.Text.Encoding.UTF8.GetString(bytes, offset + 2, nameLen);
+            protoName = "";
+            string json = "";
+            try
+            {
+                Int16 nameLen = (Int16)(bytes[offset] | (bytes[offset+1] << 8));
+                protoName = System.Text.Encoding.UTF8.GetString(bytes, offset + 2, nameLen);
 
-            int bodyOffset = offset + 2 + nameLen;
-            int bodyCount = count - 2 - nameLen;
+                int bodyOffset = offset + 2 + nameLen;
+                int bodyCount = count - 2 - nameLen;
 
-            string json = System.Text.Encoding.UTF8.GetString(bytes, bodyOffset, bodyCount);
-            Type type = Type.GetType("Proto." + protoName);   // ²¹È«ÃüÃû¿Õ¼ä, ·ÀÖ¹·´ÉäÊ§°Ü
-            if (type == null) return null;
+                json = System.Text.Encoding.UTF8.GetString(bytes, bodyOffset, bodyCount);
+                Type type = Type.GetType("Proto." + protoName);   // å…¨å‘½åç©ºé—´, å¦åˆ™åå°„å¤±è´¥
+                if (type == null) return null;
 
-            Debug.Log($"Decode: [ProtoName] {protoName} | [Content] {json}");
-            return (MsgBase)JsonUtility.FromJson(json, type);
+                Debug.Log($"Decode: [ProtoName] {protoName} | [Content] {json}");
+
+                return (MsgBase)JsonConvert.DeserializeObject(json, type);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Decode JSON Error] {protoName} å¤±è´¥: {ex.Message}. JSON Content: {json}");
+                return null; // è¿”å› nullï¼Œé˜²æ­¢å´©æºƒï¼Œå…è®¸å®¢æˆ·ç«¯ç»§ç»­è¿è½¬
+            }
         }
 
         

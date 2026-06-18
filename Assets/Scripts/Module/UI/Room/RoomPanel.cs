@@ -78,6 +78,7 @@ namespace Module.Room
 
         private void OnStartButtonClick()
         {
+            Debug.Log("[Send] MsgStartBattle");
             MsgStartBattle msgStartBattle = new MsgStartBattle(0);
             NetManager.Send(msgStartBattle);
         }

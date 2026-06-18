@@ -1,4 +1,5 @@
 using Proto;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
@@ -7,7 +8,7 @@ using UnityEngine;
 namespace Framework.Web
 {
     public delegate void NetEventListener(string msg);
-    public delegate void MsgEventListener(MsgBase msgBase);  // ´¦ÀíĞ­Òé, ĞèÒªĞ­ÒéĞÅÏ¢->´«µİMsgBase
+    public delegate void MsgEventListener(MsgBase msgBase);  // å¤„ç†åè®®, éœ€è¦åè®®ä¿¡æ¯->ä¼ é€’MsgBase
     public enum NetEvent
     {
         ConnectSuccess,
@@ -18,24 +19,31 @@ namespace Framework.Web
     {
         private static Socket _socket;
 
-        // ×´Ì¬
+        // çŠ¶æ€
         private static bool isConnecting;
         private static bool isClosing;
-        // ·¢ËÍ
+        // å‘é€
         private static Queue<ByteArray> sendQueue;
-        // ½ÓÊÕ
+        // æ¥æ”¶
         private static ByteArray readBuff;
         private static Queue<MsgBase> msgQueue;
         private static int MAX_MSG_HANDLER_COUNT;
-        // ÊÂ¼ş
+        // äº‹ä»¶
         private static Dictionary<NetEvent, NetEventListener> netListeners;
         private static Dictionary<string, MsgEventListener> msgListeners;
+
+        private struct NetEventState
+        {
+            public NetEvent netEvent;
+            public string msg;
+        }
+        private static Queue<NetEventState> netEventQueue = new Queue<NetEventState>();
 
         private static float lastPingTime;
         private static float lastPongTime;
         private static int pingInterval;
 
-        // ³õÊ¼»¯
+        // åˆå§‹åŒ–
         static NetManager()
         {
             netListeners = new Dictionary<NetEvent, NetEventListener>();
@@ -43,6 +51,12 @@ namespace Framework.Web
             MAX_MSG_HANDLER_COUNT = 10;
             pingInterval = 5;
             AddMsgListener("MsgPong", OnMsgPong);
+
+            // å¼ºåˆ¶å…¨å±€ Newtonsoft.Json ä½¿ç”¨ InvariantCulture ä»¥æ”¯æŒè·¨åŒºåŸŸæµ®ç‚¹æ•°ï¼ˆåŒ…æ‹¬ç§‘å­¦è®¡æ•°æ³•ï¼‰æ­£ç¡®è§£æ
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+            {
+                Culture = System.Globalization.CultureInfo.InvariantCulture
+            };
         }
 
         private static void InitState()
@@ -55,26 +69,27 @@ namespace Framework.Web
             sendQueue = new Queue<ByteArray>();
             readBuff = new ByteArray(1024);
             msgQueue = new Queue<MsgBase>();
+            netEventQueue = new Queue<NetEventState>();
 
             lastPingTime = Time.time;
             lastPongTime = Time.time;
         }
 
-        // ¶ÔÍâ½Ó¿Ú
+        // å¯¹å¤–æ¥å£
         public static void Connect(string ip, int port)
         {
             if(isConnecting)
             {
-                Debug.Log("[Connect] ÕıÔÚÁ¬½Ó");
+                Debug.Log("[Connect] æ­£åœ¨è¿æ¥");
                 return;
             }
             if(_socket!=null && _socket.Connected)
             {
-                Debug.Log("[Connect] ÒÑ¾­Á¬½Ó");
+                Debug.Log("[Connect] å·²ç»è¿æ¥");
                 return;
             }
 
-            Debug.Log("[Connect] ¿ªÊ¼Á¬½Ó...");
+            Debug.Log("[Connect] å¼€å§‹è¿æ¥...");
             InitState();
             isConnecting = true;
             _socket.BeginConnect(ip, port, ConnectCallBack, _socket);
@@ -94,6 +109,21 @@ namespace Framework.Web
                 FireNetEvent(NetEvent.Close, "");
             }
         }
+        public static void CloseSocketImmediate()
+        {
+            if (_socket == null) return;
+            try
+            {
+                _socket.Close();
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("[CloseSocketImmediate] Error: " + ex.ToString());
+            }
+            isClosing = false;
+            isConnecting = false;
+            FireNetEvent(NetEvent.Close, "Protocol Error");
+        }
         public static void Send(MsgBase msgBase)
         {
             if (_socket == null || !_socket.Connected) return;
@@ -112,15 +142,43 @@ namespace Framework.Web
 
             if(count == 1)
             {
-                _socket.BeginSend(byteArray.bytes, byteArray.readIdx, byteArray.Remain, 0, SendCallBack, _socket);
+                _socket.BeginSend(byteArray.bytes, byteArray.readIdx, byteArray.Length, 0, SendCallBack, _socket);
             }
 
         }
         public static void Update()
         {
+            NetEventUpdate();
             if (_socket == null || !_socket.Connected) return;
             MsgUpdate();
             //PingUpdate();
+        }
+        private static void NetEventUpdate()
+        {
+            while (true)
+            {
+                bool hasEvent = false;
+                NetEventState state = default;
+                lock (netEventQueue)
+                {
+                    if (netEventQueue.Count > 0)
+                    {
+                        state = netEventQueue.Dequeue();
+                        hasEvent = true;
+                    }
+                }
+                if (hasEvent)
+                {
+                    if (netListeners.ContainsKey(state.netEvent) && netListeners[state.netEvent] != null)
+                    {
+                        netListeners[state.netEvent](state.msg);
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
         }
 
         public static void AddNetListener(NetEvent netEvent, NetEventListener listener)
@@ -148,10 +206,10 @@ namespace Framework.Web
         }
         public static void FireNetEvent(NetEvent netEvent, string msg)
         {
-            if (!netListeners.ContainsKey(netEvent)) return;
-            if (netListeners[netEvent] == null) return;
-
-            netListeners[netEvent](msg);
+            lock(netEventQueue)
+            {
+                netEventQueue.Enqueue(new NetEventState { netEvent = netEvent, msg = msg });
+            }
         }
        
         public static void AddMsgListener(string name, MsgEventListener listener)
@@ -186,7 +244,7 @@ namespace Framework.Web
             msgListeners[name](msgBase);
         }
         
-        // Ë½ÓĞ
+        // ç§æœ‰
         private static void ConnectCallBack(IAsyncResult ar)
         {
             try
@@ -259,6 +317,11 @@ namespace Framework.Web
                 readBuff.writeIdx += count;
                 OnReceiveData();
 
+                if (_socket == null || !_socket.Connected || socket != _socket || isClosing)
+                {
+                    return;
+                }
+
                 //?
                 if(readBuff.Remain < 8)
                 {
@@ -266,23 +329,48 @@ namespace Framework.Web
                     readBuff.CheckAndExpand(readBuff.Length * 2);
                 }
                 
-                socket.BeginReceive(readBuff.bytes, readBuff.readIdx, readBuff.Remain, 0, ReceiveCallBack, socket);
+                socket.BeginReceive(readBuff.bytes, readBuff.writeIdx, readBuff.Remain, 0, ReceiveCallBack, socket);
             }
-            catch(SocketException ex)
+            catch(Exception ex)
             {
                 Debug.Log("[Receive] fail: " + ex.ToString());
             }
         }
         private static void OnReceiveData()
         {
+            if (_socket == null || !_socket.Connected || isClosing) return;
             if (readBuff.Length <= 2) return;
 
             Int16 bodylen = (Int16)(readBuff.bytes[readBuff.readIdx+1] << 8 | readBuff.bytes[readBuff.readIdx]);
-            if (bodylen > readBuff.bytes.Length) return;
+            if (bodylen <= 0 || bodylen > 8192)
+            {
+                string hex = "";
+                int printLen = Math.Min(64, readBuff.Length);
+                for (int i = 0; i < printLen; i++)
+                {
+                    hex += readBuff.bytes[readBuff.readIdx + i].ToString("X2") + " ";
+                }
+                Debug.LogError("[OnReceiveData Protocol Error] bodylen = " + bodylen + ", Length = " + readBuff.Length + ", Hex: " + hex + ". Force closing socket.");
+                CloseSocketImmediate();
+                return;
+            }
+            if (readBuff.Length < bodylen + 2) return;
             readBuff.readIdx += 2;
 
             string protoName;
             MsgBase msg = MsgBase.Decode(readBuff.bytes, readBuff.readIdx, bodylen, out protoName);
+            if (msg == null)
+            {
+                string hex = "";
+                int printLen = Math.Min(bodylen + 2, readBuff.Length);
+                for (int i = 0; i < printLen; i++)
+                {
+                    hex += readBuff.bytes[readBuff.readIdx - 2 + i].ToString("X2") + " ";
+                }
+                Debug.LogError("[OnReceiveData Decode Error] protoName = " + protoName + ", Hex: " + hex + ". Force closing socket.");
+                CloseSocketImmediate();
+                return;
+            }
             readBuff.readIdx += bodylen;
 
             if(msg != null)
@@ -297,7 +385,7 @@ namespace Framework.Web
             OnReceiveData();
         }
 
-        // Ã¿Ö¡¸üĞÂ
+        // æ¯å¸§æ›´æ–°
         private static void MsgUpdate()
         {
             for(int i=0; i<MAX_MSG_HANDLER_COUNT; ++i)

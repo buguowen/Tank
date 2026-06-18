@@ -10,8 +10,8 @@ namespace Framework.Web
         public int writeIdx;
         public int capacity;
 
-        public int Length => writeIdx - readIdx;    // ½ø¶ÈÌõµÄ³¤¶È
-        public int Remain => capacity - writeIdx;   // »¹²î¶àÉÙµ½Ä©Î²
+        public int Length => writeIdx - readIdx;    // å·²ç»å­˜å‚¨çš„æ•°æ®å¤§å°
+        public int Remain => capacity - writeIdx;   // è¿˜å·®å¤šå°‘åˆ°æœ«å°¾
 
         public ByteArray(int capacity = 1024)
         {
@@ -42,11 +42,18 @@ namespace Framework.Web
         }
         public void MoveBytes()
         {
-            if (Length <= 0 || readIdx <= 0) return;
+            if (Length <= 0)
+            {
+                readIdx = 0;
+                writeIdx = 0;
+                return;
+            }
+            if (readIdx <= 0) return;
 
-            Array.Copy(bytes, readIdx, bytes, 0, Length);
+            int len = Length;
+            Array.Copy(bytes, readIdx, bytes, 0, len);
             readIdx = 0;
-            writeIdx = Length;
+            writeIdx = len;
         }
         public void Expand(int len)
         {

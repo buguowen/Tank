@@ -17,10 +17,13 @@ namespace Game
 
         private void Awake()
         {
+            MsgEnterBattle msg = new MsgEnterBattle();
             id = "";
         }
         private void Start()
         {
+            MsgEnterBattle msg = new MsgEnterBattle();
+
             NetManager.Connect("127.0.0.1", 8888);
 
             PanelManager.Init();
