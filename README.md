@@ -8,15 +8,15 @@
 
 ### 1. 注册登录
 
-![Login_Register](gif\Login_Register.gif)
+![Login_Register](https://github.com/user-attachments/assets/45d7355e-ca67-44e9-8aef-e9bccea9f85d)
 
 ### 2. 创建房间
 
-![CreateRoom](gif\CreateRoom.gif)
+![CreateRoom](https://github.com/user-attachments/assets/2e0d3698-3254-4f1e-8a39-134d60bc719d)
 
 ### 3. 加入房间
 
-![JoinRoom](gif\JoinRoom.gif)
+![JoinRoom](https://github.com/user-attachments/assets/cee8b236-d987-4a90-b8e9-12679f4222f2)
 
 ### 4. 战斗和胜利结算
 
