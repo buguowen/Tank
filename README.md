@@ -20,7 +20,7 @@
 
 ### 4. 战斗和胜利结算
 
-![Battle](gif\Battle.gif)
+![Battle](https://github.com/user-attachments/assets/a27a5479-cf30-4e1c-b207-db349c7bce6a)
 
 
 
