@@ -107,7 +107,7 @@ namespace Module.Room
             foreach(PlayerInfo player in msg.players)
             {
                 GameObject go = Instantiate(playerPF);
-                go.transform.SetParent(contentTF);
+                go.transform.SetParent(contentTF, false);
 
                 go.transform.Find("accountText").GetComponent<TMP_Text>().text = $"Account: {player.id}";
                 go.transform.Find("scoreText").GetComponent<TMP_Text>().text = $"Score: WIN[{player.win}] | LOSE[{player.lose}]";

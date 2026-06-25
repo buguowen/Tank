@@ -4,7 +4,28 @@
 
 ---
 
+## 演示
+
+### 1. 注册登录
+
+![Login_Register](E:\Project\GameDevelopment\Tank\gif\Login_Register.gif)
+
+### 2. 创建房间
+
+![CreateRoom](E:\Project\GameDevelopment\Tank\gif\CreateRoom.gif)
+
+### 3. 加入房间
+
+![JoinRoom](E:\Project\GameDevelopment\Tank\gif\JoinRoom.gif)
+
+### 4. 战斗和胜利结算
+
+![Battle](E:\Project\GameDevelopment\Tank\gif\Battle.gif)
+
+
+
 ## 目录
+
 1. [网络模块设计](#1-网络模块设计)
 2. [UI 框架设计](#2-ui-框架设计)
 3. [核心玩法与业务流](#3-核心玩法与业务流)

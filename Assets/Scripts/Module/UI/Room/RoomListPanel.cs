@@ -136,7 +136,7 @@ namespace Module.Room
         private void GenerateRoom(RoomInfo room)
         {
             GameObject newRoom = Instantiate(roomGO);
-            newRoom.transform.SetParent(contentTF);
+            newRoom.transform.SetParent(contentTF, false);
 
             newRoom.transform.Find("numText").GetComponent<TMP_Text>().text = $"Num: {room.id}";
             newRoom.transform.Find("peopleText").GetComponent<TMP_Text>().text = $"People: {room.count}";
