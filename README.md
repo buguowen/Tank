@@ -8,19 +8,19 @@
 
 ### 1. 注册登录
 
-![Login_Register](E:\Project\GameDevelopment\Tank\gif\Login_Register.gif)
+![Login_Register](gif\Login_Register.gif)
 
 ### 2. 创建房间
 
-![CreateRoom](E:\Project\GameDevelopment\Tank\gif\CreateRoom.gif)
+![CreateRoom](gif\CreateRoom.gif)
 
 ### 3. 加入房间
 
-![JoinRoom](E:\Project\GameDevelopment\Tank\gif\JoinRoom.gif)
+![JoinRoom](gif\JoinRoom.gif)
 
 ### 4. 战斗和胜利结算
 
-![Battle](E:\Project\GameDevelopment\Tank\gif\Battle.gif)
+![Battle](gif\Battle.gif)
 
 
 
